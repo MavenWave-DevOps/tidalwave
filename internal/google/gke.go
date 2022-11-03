@@ -1,16 +1,18 @@
 package google
 
 import (
+	container "cloud.google.com/go/container/apiv1"
 	"context"
 	"errors"
 	"fmt"
 	"github.com/kyokomi/emoji/v2"
-	"time"
-
-	container "cloud.google.com/go/container/apiv1"
 	containerpb "google.golang.org/genproto/googleapis/container/v1"
+	"log"
+	"os/exec"
+	"time"
 )
-//counter is used to check status
+
+// counter is used to check status
 var counter int
 
 // Cluster represents a GKE cluster
@@ -32,6 +34,12 @@ type Cluster struct {
 // Create GKE cluster
 func (c *Cluster) create(ctx context.Context, client *container.ClusterManagerClient) (*containerpb.Cluster, error) {
 	if c.exists(ctx, client) {
+		if err := c.connect(); err != nil {
+			//just log error and continue
+			log.Println(err)
+		} else {
+			emoji.Println(":check_mark_button: Controlplane cluster added to kubeconfig")
+		}
 		return c.get(ctx, client)
 	}
 
@@ -153,9 +161,9 @@ func (c *Cluster) create(ctx context.Context, client *container.ClusterManagerCl
 
 status:
 	for {
-		if counter%10==0 {
+		if counter%10 == 0 {
 			emoji.Println(":beer: Cluster is being created")
-			time.Sleep(time.Second*30)
+			time.Sleep(time.Second * 30)
 		}
 		s, err := client.GetOperation(ctx, &containerpb.GetOperationRequest{
 			Name: fmt.Sprintf("projects/%s/locations/%s/operations/%s", c.ProjectID, c.Region, op.GetName()),
@@ -171,7 +179,25 @@ status:
 		}
 		counter++
 	}
+	if err := c.connect(); err != nil {
+		//just log error and continue
+		log.Println(err)
+	} else {
+		emoji.Println(":check_mark_button: Controlplane cluster added to kubeconfig")
+	}
 	return c.get(ctx, client)
+}
+
+func (c *Cluster) connect() error {
+	p, err := exec.LookPath("gcloud")
+	if err != nil {
+		return errors.New("no gcloud in path... need to interface with API in future")
+	}
+	cmd := exec.Command(p, "container", "clusters", "get-credentials", c.Name, "--region", c.Region, "--project", c.ProjectID)
+	if err := cmd.Run(); err != nil {
+		return errors.New("could not connect")
+	}
+	return nil
 }
 
 // Get GKE cluster
@@ -205,9 +231,9 @@ func (c *Cluster) delete(ctx context.Context, client *container.ClusterManagerCl
 		}
 	status:
 		for {
-			if counter%10==0 {
+			if counter%10 == 0 {
 				emoji.Println(":beer: Cluster is being deleted")
-				time.Sleep(time.Second*30)
+				time.Sleep(time.Second * 30)
 			}
 			s, err := client.GetOperation(ctx, &containerpb.GetOperationRequest{
 				Name: fmt.Sprintf("projects/%s/locations/%s/operations/%s", c.ProjectID, c.Region, op.GetName()),
