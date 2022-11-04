@@ -5,6 +5,7 @@ import (
 
 	compute "cloud.google.com/go/compute/apiv1"
 	container "cloud.google.com/go/container/apiv1"
+	admin "cloud.google.com/go/iam/admin/apiv1"
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/kyokomi/emoji/v2"
 )
@@ -19,6 +20,7 @@ type Controlplane struct {
 	Firewalls []Firewall
 	Keyring
 	CryptoKey
+	ServiceAccount
 }
 
 // BoolPtr convertes a bool to *bool
@@ -34,6 +36,17 @@ func StrPtr(s string) *string {
 // Create controlplane
 func (c *Controlplane) Create() error {
 	ctx := context.Background()
+
+	adminClient, err := admin.NewIamClient(ctx)
+	if err != nil {
+		return err
+	}
+	defer adminClient.Close()
+	_, err = c.ServiceAccount.create(ctx, adminClient)
+	if err != nil {
+		return err
+	}
+	emoji.Println(":check_mark_button: Controlplane service account created")
 
 	vpcClient, err := compute.NewNetworksRESTClient(ctx)
 	if err != nil {
@@ -194,6 +207,17 @@ func (c *Controlplane) Delete() error {
 		return err
 	}
 	emoji.Println(":cross_mark_button: Controlplane VPC destroyed")
+
+	adminClient, err := admin.NewIamClient(ctx)
+	if err != nil {
+		return err
+	}
+	defer adminClient.Close()
+	err = c.ServiceAccount.delete(ctx, adminClient)
+	if err != nil {
+		return err
+	}
+	emoji.Println(":cross_mark_button: Controlplane service account destroyed")
 
 	return nil
 }
