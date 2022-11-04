@@ -14,6 +14,7 @@ type ServiceAccount struct {
 	ProjectID   string
 	DisplayName string
 	Description string
+	ProjectRole string
 }
 
 // Create Service Account
@@ -39,7 +40,7 @@ func (s *ServiceAccount) create(ctx context.Context, client *admin.IamClient) (*
 // Get Service Account
 func (s *ServiceAccount) get(ctx context.Context, client *admin.IamClient) (*adminpb.ServiceAccount, error) {
 	req := &adminpb.GetServiceAccountRequest{
-		Name: fmt.Sprintf("projects/%s/serviceAccounts/%s", s.ProjectID, s.Name),
+		Name: fmt.Sprintf("projects/%s/serviceAccounts/%s@%s.iam.gserviceaccount.com", s.ProjectID, s.Name, s.ProjectID),
 	}
 	resp, err := client.GetServiceAccount(ctx, req)
 	if err != nil {
@@ -55,14 +56,18 @@ func (s *ServiceAccount) exists(ctx context.Context, client *admin.IamClient) bo
 }
 
 // Delete Service Account
-func (s *ServiceAccount) delete(ctx context.Context, client *admin.IamClient) error {
+func (s *ServiceAccount) delete(ctx context.Context, client *admin.IamClient) (*adminpb.ServiceAccount, error) {
+	sa, err := s.get(ctx, client)
+	if err != nil {
+		return nil, err
+	}
 	if s.exists(ctx, client) {
 		req := &adminpb.DeleteServiceAccountRequest{
-			Name: fmt.Sprintf("projects/%s/serviceAccounts/%s", s.ProjectID, s.Name),
+			Name: fmt.Sprintf("projects/%s/serviceAccounts/%s@%s.iam.gserviceaccount.com", s.ProjectID, s.Name, s.ProjectID),
 		}
 		if err := client.DeleteServiceAccount(ctx, req); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return sa, nil
 }

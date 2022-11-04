@@ -29,6 +29,7 @@ func googleDefaults() {
 		},
 	})
 	viper.SetDefault("spec.cluster.masterCidrBlock", "172.16.0.0/28")
+	viper.SetDefault("spec.google.project.iam.role", "roles/editor")
 }
 
 // CreateGoogleControlplane creates google.Controlplane from options form the config file
@@ -61,12 +62,14 @@ func CreateGoogleControlplane() (*google.Controlplane, error) {
 		return nil, err
 	}
 	masterIpv4CidrBlock := viper.GetString("spec.cluster.masterCidrBlock")
+	projectRole := viper.GetString("spec.google.project.iam.role")
 	cp := google.Controlplane{
 		ServiceAccount: google.ServiceAccount{
 			Name:        "config-connector",
 			ProjectID:   projectID,
 			DisplayName: "Config Connector",
 			Description: "Config Connector controller",
+			ProjectRole: projectRole,
 		},
 		Apis: google.RequiredApis.Services,
 		Vpc: google.Vpc{

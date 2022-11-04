@@ -21,7 +21,7 @@ type CryptoKey struct {
 	ProjectNumber string
 }
 
-func setIam(ctx context.Context, client *kms.KeyManagementClient, id string, key *kmspb.CryptoKey) error {
+func setKmsIam(ctx context.Context, client *kms.KeyManagementClient, id string, key *kmspb.CryptoKey) error {
 	member := fmt.Sprintf("serviceAccount:service-%s@container-engine-robot.iam.gserviceaccount.com", id)
 	handle := client.ResourceIAM(key.GetName())
 	policy, err := handle.Policy(ctx)
@@ -33,7 +33,7 @@ func setIam(ctx context.Context, client *kms.KeyManagementClient, id string, key
 	return handle.SetPolicy(ctx, policy)
 }
 
-func removeIam(ctx context.Context, client *kms.KeyManagementClient, id string, key *kmspb.CryptoKey) error {
+func removeKmsIam(ctx context.Context, client *kms.KeyManagementClient, id string, key *kmspb.CryptoKey) error {
 	member := fmt.Sprintf("serviceAccount:service-%s@container-engine-robot.iam.gserviceaccount.com", id)
 	handle := client.ResourceIAM(key.GetName())
 	policy, err := handle.Policy(ctx)
@@ -49,7 +49,7 @@ func removeIam(ctx context.Context, client *kms.KeyManagementClient, id string, 
 func (c *CryptoKey) create(ctx context.Context, client *kms.KeyManagementClient) (*kmspb.CryptoKey, error) {
 	k, ok := c.exists(ctx, client)
 	if ok {
-		if err := setIam(ctx, client, c.ProjectNumber, k); err != nil {
+		if err := setKmsIam(ctx, client, c.ProjectNumber, k); err != nil {
 			return nil, err
 		}
 		_, err := c.checkVersion(ctx, client, k)
@@ -71,7 +71,7 @@ func (c *CryptoKey) create(ctx context.Context, client *kms.KeyManagementClient)
 	if err != nil {
 		return nil, err
 	}
-	if err := setIam(ctx, client, c.ProjectNumber, resp); err != nil {
+	if err := setKmsIam(ctx, client, c.ProjectNumber, resp); err != nil {
 		return nil, err
 	}
 	return resp, nil
@@ -132,7 +132,7 @@ func (c *CryptoKey) update(ctx context.Context, client *kms.KeyManagementClient)
 	if err != nil {
 		return nil, err
 	}
-	if err := setIam(ctx, client, c.ProjectNumber, key); err != nil {
+	if err := setKmsIam(ctx, client, c.ProjectNumber, key); err != nil {
 		return nil, err
 	}
 	return key, nil
@@ -143,7 +143,7 @@ func (c *CryptoKey) delete(ctx context.Context, client *kms.KeyManagementClient)
 	if err != nil {
 		return err
 	}
-	return removeIam(ctx, client, c.ProjectNumber, key)
+	return removeKmsIam(ctx, client, c.ProjectNumber, key)
 }
 
 func waitKeyVersion(ctx context.Context, client *kms.KeyManagementClient, kv *kmspb.CryptoKeyVersion, state kmspb.CryptoKeyVersion_CryptoKeyVersionState) (*kmspb.CryptoKeyVersion, error) {
